@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>My Program</title>
+    <meta name="description" content="직접 만든 웹게임과 앱을 한곳에서 실행하는 런처" />
+    <meta name="theme-color" content="#17132a" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="My Program" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <h1 class="wordmark">My Program</h1>
+        <button class="icon-btn" id="settings-btn" type="button" aria-label="설정" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        </button>
+      </header>
+
+      <p class="offline-note" id="offline-note" hidden>오프라인 상태예요. 목록은 저장된 것을 보여 주고, 게임은 연결돼야 열릴 수 있어요.</p>
+
+      <section class="hero" id="hero" aria-labelledby="hero-title" hidden>
+        <img class="hero-icon" id="hero-icon" alt="" />
+        <div class="hero-body">
+          <p class="hero-kicker" id="hero-kicker"></p>
+          <h2 class="hero-title" id="hero-title"></h2>
+          <p class="hero-meta" id="hero-meta"></p>
+        </div>
+        <button class="play-btn" id="hero-play" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+          <span id="hero-play-label">플레이</span>
+        </button>
+      </section>
+
+      <section class="shelf" id="recent-shelf" aria-labelledby="recent-title" hidden>
+        <h2 class="section-title" id="recent-title">최근 플레이</h2>
+        <ul class="shelf-list" id="recent-list"></ul>
+      </section>
+
+      <section class="library" aria-labelledby="library-title">
+        <div class="library-head">
+          <h2 class="section-title" id="library-title">전체 <span class="count" id="library-count"></span></h2>
+          <label class="sort">
+            <span class="visually-hidden">정렬</span>
+            <select id="sort">
+              <option value="recent">최근 플레이순</option>
+              <option value="plays">많이 한 순</option>
+              <option value="name">이름순</option>
+            </select>
+          </label>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+          <input id="search" type="search" placeholder="이름, 설명, 태그로 찾기" autocomplete="off" enterkeyhint="search" />
+        </div>
+        <div class="chips" id="chips" role="toolbar" aria-label="태그로 거르기"></div>
+        <ul class="grid" id="grid"></ul>
+        <p class="empty" id="empty" hidden></p>
+      </section>
+    </div>
+
+    <dialog class="sheet" id="settings">
+      <form method="dialog" class="sheet-inner">
+        <h2 class="sheet-title">설정</h2>
+        <fieldset class="seg">
+          <legend>게임 실행 방식</legend>
+          <label><input type="radio" name="launch" value="fullscreen" /><span>전체화면</span></label>
+          <label><input type="radio" name="launch" value="tab" /><span>새 탭</span></label>
+        </fieldset>
+        <p class="sheet-hint">카드를 누르면 이 방식으로 열려요. 카드의 ↗ 버튼은 항상 새 탭으로 엽니다.</p>
+        <button type="button" class="text-btn danger" id="reset-stats">플레이 기록 지우기</button>
+        <button class="sheet-close" value="close">닫기</button>
+      </form>
+    </dialog>
+
+    <div class="player" id="player" hidden>
+      <div class="player-bar" id="player-bar">
+        <button type="button" class="player-btn" id="player-close" aria-label="런처로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button type="button" class="player-btn" id="player-newtab" aria-label="새 탭에서 열기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <template id="card-tpl">
+      <li class="card">
+        <button class="card-main" type="button">
+          <img class="card-icon" alt="" loading="lazy" />
+          <span class="card-text">
+            <span class="card-name"></span>
+            <span class="card-desc"></span>
+            <span class="card-meta"></span>
+          </span>
+        </button>
+        <div class="card-actions">
+          <button class="mini-btn fav" type="button" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8l2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"/></svg>
+          </button>
+          <a class="mini-btn newtab" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5"/></svg>
+          </a>
+        </div>
+        <ul class="card-tags"></ul>
+      </li>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

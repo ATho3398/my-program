@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate games.json
+        run: python3 -c "import json; d=json.load(open('games.json')); assert isinstance(d, list) and all(g.get('name') and g.get('url') for g in d), 'every entry needs name and url'; print(len(d), 'games')"
+
+      - name: Build site
+        run: |
+          mkdir _site
+          cp -r index.html styles.css app.js sw.js games.json manifest.webmanifest icons _site/
+          # new cache name on every deploy so phones pick up the update
+          sed -i "s/__BUILD__/${GITHUB_SHA::7}/" _site/sw.js
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
