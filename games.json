@@ -18,5 +18,15 @@
     "description": "인스타·유튜브 콘텐츠 제작 일정을 고객사별로 관리하는 업무용 일정표",
     "tags": ["업무", "일정"],
     "launch": "tab"
+  },
+  {
+    "id": "capcut-auto-editor",
+    "name": "캡컷 자동 편집기",
+    "category": "도구",
+    "url": "http://localhost:8765/",
+    "icon": "🎬",
+    "description": "맥에서 항상 켜 두는 캡컷 자동 편집기. 그 맥에서만 열려요",
+    "tags": ["영상", "편집"],
+    "launch": "tab"
   }
 ]
