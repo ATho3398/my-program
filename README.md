@@ -32,6 +32,18 @@
 | `launch` | | `"tab"`이면 설정과 상관없이 항상 새 탭으로 엽니다. 다른 사이트 안에 띄우는 것을 막아 둔 앱(로그인 앱 등)에 씁니다 |
 | `orientation` | | 전체화면 실행 시 화면 방향 고정 (`landscape`/`portrait`, 안드로이드에서만 동작) |
 
+## 웹이 아닌 앱 넣기
+
+`url`에 `https://` 말고 앱 링크를 넣으면, 누를 때 그 앱이 열립니다 (해당 기기에 앱이 설치돼 있어야 해요).
+
+| 종류 | `url` 예시 |
+| --- | --- |
+| 맥에서 켜 둔 로컬 웹 도구 | `http://localhost:8765/` (+ `"launch": "tab"`) |
+| iPhone/맥 단축어 | `shortcuts://run-shortcut?name=단축어이름` |
+| 안드로이드 앱 | `intent://#Intent;package=com.example.app;end` |
+| 자체 URL 스킴이 있는 앱 | `myapp://` |
+| 설치 파일 배포 | GitHub Releases 다운로드 주소 |
+
 ## 기능
 
 - 카드를 누르면 설정한 방식(전체화면 / 새 탭)으로 열기

@@ -127,6 +127,12 @@
   function launch(game, mode = game.launch || state.launch) {
     if (!game.url) { toast("이 항목에는 주소가 없어요"); return; }
     recordPlay(game);
+    // App links (shortcuts://, intent://, myapp://) go to the OS, not a tab or frame.
+    if (!/^https?:/i.test(game.url)) {
+      window.location.href = game.url;
+      setTimeout(render, 300);
+      return;
+    }
     if (mode === "tab") {
       window.open(game.url, "_blank", "noopener");
       render();

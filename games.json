@@ -28,5 +28,14 @@
     "description": "맥에서 항상 켜 두는 캡컷 자동 편집기. 그 맥에서만 열려요",
     "tags": ["영상", "편집"],
     "launch": "tab"
+  },
+  {
+    "id": "player-one-football",
+    "name": "PLAYER ONE",
+    "category": "게임",
+    "url": "https://atho3398.github.io/football/",
+    "icon": "https://atho3398.github.io/football/icons/icon-192.png",
+    "description": "한 선수의 축구 커리어를 키우는 게임",
+    "tags": ["육성", "축구"]
   }
 ]
