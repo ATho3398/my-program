@@ -43,6 +43,8 @@
       description: String(raw.description || raw["설명"] || ""),
       tags: Array.isArray(raw.tags || raw["태그"]) ? (raw.tags || raw["태그"]).map(String) : [],
       orientation: raw.orientation || "",
+      // "tab" for sites that refuse to be framed (X-Frame-Options / frame-ancestors)
+      launch: raw.launch === "tab" ? "tab" : "",
       order: i,
     };
   }
@@ -103,7 +105,7 @@
     store.set(KEYS.stats, state.stats);
   }
 
-  function launch(game, mode = state.launch) {
+  function launch(game, mode = game.launch || state.launch) {
     if (!game.url) { toast("이 항목에는 주소가 없어요"); return; }
     recordPlay(game);
     if (mode === "tab") {
@@ -344,7 +346,7 @@
       const node = tpl.content.firstElementChild.cloneNode(true);
       node.dataset.id = g.id;
       const main = node.querySelector(".card-main");
-      main.setAttribute("aria-label", `${g.name} 플레이 (${state.launch === "tab" ? "새 탭" : "전체화면"})`);
+      main.setAttribute("aria-label", `${g.name} 플레이 (${(g.launch || state.launch) === "tab" ? "새 탭" : "전체화면"})`);
       main.addEventListener("click", () => launch(g));
       setIcon(node.querySelector(".card-icon"), g);
       node.querySelector(".card-name").textContent = g.name;
