@@ -1,4 +1,4 @@
-// "__BUILD__" is replaced with the commit SHA by the deploy workflow,
+// VERSION is stamped with the commit SHA by the deploy workflow,
 // so every deploy gets a fresh cache.
 const VERSION = "__BUILD__";
 const SHELL_CACHE = `mp-shell-${VERSION}`;
