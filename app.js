@@ -2,7 +2,22 @@
   "use strict";
 
   const $ = (sel) => document.querySelector(sel);
-  const KEYS = { stats: "mp.stats", favs: "mp.favs", launch: "mp.launch", sort: "mp.sort" };
+  const KEYS = { stats: "mp.stats", favs: "mp.favs", launch: "mp.launch", sort: "mp.sort", cats: "mp.cats", tab: "mp.tab" };
+
+  const CATEGORIES = [
+    { key: "game", label: "게임" },
+    { key: "tool", label: "도구" },
+    { key: "etc", label: "그 외" },
+  ];
+  const CAT_ALIASES = { game: "game", games: "game", "게임": "game", tool: "tool", tools: "tool", "도구": "tool" };
+  const parseCategory = (v) => CAT_ALIASES[String(v || "").trim().toLowerCase()] || "etc";
+  // Korean particle 로/으로: 으로 after a final consonant other than ㄹ
+  const withRo = (word) => {
+    const code = word.charCodeAt(word.length - 1) - 0xac00;
+    const jong = code >= 0 && code < 11172 ? code % 28 : 0;
+    return `‘${word}’${jong && jong !== 8 ? "으로" : "로"}`;
+  };
+  const catLabel = (key) => (CATEGORIES.find((c) => c.key === key) || { label: "전체" }).label;
 
   // ---------- storage (every access guarded: private mode etc.) ----------
   const store = {
@@ -23,6 +38,8 @@
     favs: new Set(store.get(KEYS.favs, [])),
     launch: store.get(KEYS.launch, "fullscreen"),
     sort: store.get(KEYS.sort, "recent"),
+    catOverrides: store.get(KEYS.cats, {}), // { id: "game" | "tool" | "etc" } set on this device
+    tab: store.get(KEYS.tab, "all"),        // "all" | category key
     filter: "all",                          // "all" | "fav" | "tag:<name>"
     query: "",
     current: null,
@@ -33,7 +50,7 @@
   const slug = (s) => String(s).toLowerCase().replace(/^https?:\/\//, "").replace(/[^a-z0-9가-힣]+/g, "-").replace(/^-|-$/g, "");
 
   function normalize(raw, i) {
-    const name = String(raw.name || raw["이름"] || `게임 ${i + 1}`);
+    const name = String(raw.name || raw["이름"] || `항목 ${i + 1}`);
     const url = String(raw.url || raw["주소"] || "");
     return {
       id: String(raw.id || slug(url || name)),
@@ -42,6 +59,7 @@
       icon: raw.icon || raw["아이콘"] || "",
       description: String(raw.description || raw["설명"] || ""),
       tags: Array.isArray(raw.tags || raw["태그"]) ? (raw.tags || raw["태그"]).map(String) : [],
+      category: parseCategory(raw.category || raw["분류"]),
       orientation: raw.orientation || "",
       // "tab" for sites that refuse to be framed (X-Frame-Options / frame-ancestors)
       launch: raw.launch === "tab" ? "tab" : "",
@@ -82,11 +100,12 @@
   }
 
   const statOf = (id) => state.stats[id] || { plays: 0, last: 0 };
+  const catOf = (game) => state.catOverrides[game.id] || game.category;
 
   function metaText(game) {
     const s = statOf(game.id);
-    if (!s.plays) return "아직 플레이 전";
-    return `${s.plays}회 플레이 · ${relTime(s.last)}`;
+    if (!s.plays) return "아직 안 열어 봄";
+    return `${s.plays}번 사용 · ${relTime(s.last)}`;
   }
 
   let toastTimer;
@@ -263,9 +282,12 @@
     return arr;
   }
 
+  const inTab = (g) => state.tab === "all" || catOf(g) === state.tab;
+
   function filtered() {
     const q = state.query.trim().toLowerCase();
     return state.games.filter((g) => {
+      if (!inTab(g)) return false;
       if (state.filter === "fav" && !state.favs.has(g.id)) return false;
       if (state.filter.startsWith("tag:") && !g.tags.includes(state.filter.slice(4))) return false;
       if (!q) return true;
@@ -280,12 +302,11 @@
     const game = recent || state.games[0];
     const s = statOf(game.id);
     hero.hidden = false;
-    $("#hero-kicker").textContent = recent ? "이어하기" : "처음 시작하기";
+    $("#hero-kicker").textContent = recent ? "최근 사용" : "처음 열어 보기";
     $("#hero-title").textContent = game.name;
     $("#hero-meta").textContent = recent
-      ? `${relTime(s.last)} 플레이, 총 ${s.plays}회`
+      ? `${relTime(s.last)} 사용, 총 ${s.plays}번`
       : game.description;
-    $("#hero-play-label").textContent = recent ? "이어서 플레이" : "플레이";
     const icon = $("#hero-icon");
     setIcon(icon, game);
     $("#hero-play").onclick = () => launch(game);
@@ -306,7 +327,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "shelf-btn";
-      btn.setAttribute("aria-label", `${g.name} 플레이`);
+      btn.setAttribute("aria-label", `${g.name} 열기`);
       const img = document.createElement("img");
       img.alt = "";
       setIcon(img, g);
@@ -319,8 +340,34 @@
     }));
   }
 
+  function renderTabs() {
+    const tabs = [{ key: "all", label: "전체" }, ...CATEGORIES];
+    if (!tabs.some((t) => t.key === state.tab)) state.tab = "all";
+    $("#cat-tabs").replaceChildren(...tabs.map((t) => {
+      const n = t.key === "all" ? state.games.length : state.games.filter((g) => catOf(g) === t.key).length;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cat-tab";
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", String(state.tab === t.key));
+      const label = document.createElement("span");
+      label.textContent = t.label;
+      const count = document.createElement("span");
+      count.className = "cat-count";
+      count.textContent = String(n);
+      b.append(label, count);
+      b.addEventListener("click", () => {
+        state.tab = t.key;
+        store.set(KEYS.tab, state.tab);
+        state.filter = "all";
+        render();
+      });
+      return b;
+    }));
+  }
+
   function renderChips() {
-    const tags = [...new Set(state.games.flatMap((g) => g.tags))];
+    const tags = [...new Set(state.games.filter(inTab).flatMap((g) => g.tags))];
     const chips = [
       { key: "all", label: "전체" },
       { key: "fav", label: "★ 즐겨찾기", cls: "chip-fav" },
@@ -341,12 +388,13 @@
   const tpl = $("#card-tpl");
   function renderGrid() {
     const list = sorted(filtered());
-    $("#library-count").textContent = String(state.games.length);
+    $("#library-title-text").textContent = catLabel(state.tab);
+    $("#library-count").textContent = String(state.games.filter(inTab).length);
     $("#grid").replaceChildren(...list.map((g) => {
       const node = tpl.content.firstElementChild.cloneNode(true);
       node.dataset.id = g.id;
       const main = node.querySelector(".card-main");
-      main.setAttribute("aria-label", `${g.name} 플레이 (${(g.launch || state.launch) === "tab" ? "새 탭" : "전체화면"})`);
+      main.setAttribute("aria-label", `${g.name} 열기 (${(g.launch || state.launch) === "tab" ? "새 탭" : "전체화면"})`);
       main.addEventListener("click", () => launch(g));
       setIcon(node.querySelector(".card-icon"), g);
       node.querySelector(".card-name").textContent = g.name;
@@ -357,10 +405,9 @@
       fav.setAttribute("aria-pressed", String(isFav));
       fav.setAttribute("aria-label", isFav ? `${g.name} 즐겨찾기 해제` : `${g.name} 즐겨찾기`);
       fav.addEventListener("click", () => toggleFav(g, fav));
-      const nt = node.querySelector(".newtab");
-      nt.href = g.url;
-      nt.setAttribute("aria-label", `${g.name} 새 탭에서 열기`);
-      nt.addEventListener("click", () => { recordPlay(g); setTimeout(render, 0); });
+      const more = node.querySelector(".more");
+      more.setAttribute("aria-label", `${g.name} 메뉴: 분류 바꾸기, 새 탭에서 열기`);
+      more.addEventListener("click", () => openItemSheet(g));
       node.querySelector(".card-tags").replaceChildren(...g.tags.map((t) => {
         const li = document.createElement("li");
         li.textContent = `#${t}`;
@@ -372,16 +419,18 @@
     const empty = $("#empty");
     if (list.length) { empty.hidden = true; return; }
     empty.hidden = false;
-    if (state.loadError) empty.textContent = "게임 목록(games.json)을 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.";
-    else if (!state.games.length) empty.textContent = "games.json에 게임을 추가하면 여기에 나타나요.";
-    else if (state.query) empty.textContent = `‘${state.query}’에 맞는 게임이 없어요. 검색어를 바꾸거나 지워 보세요.`;
-    else if (state.filter === "fav") empty.textContent = "즐겨찾기한 게임이 없어요. 카드의 ★를 눌러 추가하세요.";
-    else empty.textContent = "이 태그에 해당하는 게임이 없어요.";
+    if (state.loadError) empty.textContent = "목록(games.json)을 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.";
+    else if (!state.games.length) empty.textContent = "games.json에 항목을 추가하면 여기에 나타나요.";
+    else if (state.query) empty.textContent = `‘${state.query}’에 맞는 항목이 없어요. 검색어를 바꾸거나 지워 보세요.`;
+    else if (state.filter === "fav") empty.textContent = "즐겨찾기한 항목이 없어요. 카드의 ★를 눌러 추가하세요.";
+    else if (state.filter.startsWith("tag:")) empty.textContent = "이 태그에 해당하는 항목이 없어요.";
+    else empty.textContent = `${withRo(catLabel(state.tab))} 분류된 항목이 없어요. 카드의 ⋯ 메뉴에서 분류를 바꿀 수 있어요.`;
   }
 
   function render() {
     renderHero();
     renderRecent();
+    renderTabs();
     renderChips();
     renderGrid();
   }
@@ -406,12 +455,62 @@
     renderGrid();
   }));
   $("#reset-stats").addEventListener("click", () => {
-    if (!confirm("최근 플레이와 플레이 횟수를 모두 지울까요? 즐겨찾기는 그대로 둡니다.")) return;
+    if (!confirm("최근 사용과 사용 횟수를 모두 지울까요? 즐겨찾기와 분류는 그대로 둡니다.")) return;
     state.stats = {};
     store.set(KEYS.stats, state.stats);
     sheet.close();
     render();
-    toast("플레이 기록을 지웠어요");
+    toast("사용 기록을 지웠어요");
+  });
+
+  // ---------- item menu: category + new tab ----------
+  const itemSheet = $("#item-sheet");
+  let itemGame = null;
+
+  function openItemSheet(game) {
+    itemGame = game;
+    setIcon($("#item-icon"), game);
+    $("#item-name").textContent = game.name;
+    const nt = $("#item-newtab");
+    nt.href = game.url;
+    const current = catOf(game);
+    itemSheet.querySelectorAll('input[name="category"]').forEach((r) => { r.checked = r.value === current; });
+    syncItemReset();
+    itemSheet.showModal();
+  }
+
+  function syncItemReset() {
+    const btn = $("#item-reset");
+    const overridden = itemGame && state.catOverrides[itemGame.id];
+    btn.hidden = !overridden;
+    if (overridden) btn.textContent = `기본 분류(${catLabel(itemGame.category)})로 되돌리기`;
+  }
+
+  function setCategory(game, key) {
+    if (key === game.category) delete state.catOverrides[game.id];
+    else state.catOverrides[game.id] = key;
+    store.set(KEYS.cats, state.catOverrides);
+    render();
+  }
+
+  itemSheet.addEventListener("click", (e) => { if (e.target === itemSheet) itemSheet.close(); });
+  itemSheet.querySelectorAll('input[name="category"]').forEach((r) => r.addEventListener("change", () => {
+    if (!itemGame) return;
+    setCategory(itemGame, r.value);
+    syncItemReset();
+    toast(`${withRo(catLabel(r.value))} 옮겼어요`);
+  }));
+  $("#item-reset").addEventListener("click", () => {
+    if (!itemGame) return;
+    setCategory(itemGame, itemGame.category);
+    itemSheet.querySelector(`input[name="category"][value="${itemGame.category}"]`).checked = true;
+    syncItemReset();
+    toast(`기본 분류 ${withRo(catLabel(itemGame.category))} 되돌렸어요`);
+  });
+  $("#item-newtab").addEventListener("click", () => {
+    if (itemGame) recordPlay(itemGame);
+    itemSheet.close();
+    setTimeout(render, 0);
   });
 
   function syncOnline() { $("#offline-note").hidden = navigator.onLine; }

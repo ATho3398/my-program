@@ -2,6 +2,7 @@
   {
     "id": "bleach-hollow-ascension",
     "name": "블리치 할로우 어센션",
+    "category": "게임",
     "url": "https://atho3398.github.io/bleach-hollow-Ascension/",
     "icon": "https://atho3398.github.io/bleach-hollow-Ascension/icons/icon-192.png",
     "description": "블리치 세계관의 호로·사신을 키우는 다마고치형 로그라이크 육성 게임",
@@ -11,6 +12,7 @@
   {
     "id": "client-schedule",
     "name": "담당 고객사 일정표",
+    "category": "도구",
     "url": "https://client-schedule.client-schedule.workers.dev/",
     "icon": "https://client-schedule.client-schedule.workers.dev/icons/icon-192.png",
     "description": "인스타·유튜브 콘텐츠 제작 일정을 고객사별로 관리하는 업무용 일정표",
