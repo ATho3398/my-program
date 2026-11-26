@@ -76,10 +76,10 @@
         <h2 class="sheet-title">설정</h2>
         <fieldset class="seg">
           <legend>게임 실행 방식</legend>
-          <label><input type="radio" name="launch" value="fullscreen" /><span>전체화면</span></label>
+          <label><input type="radio" name="launch" value="direct" /><span>바로 열기</span></label>
           <label><input type="radio" name="launch" value="tab" /><span>새 탭</span></label>
         </fieldset>
-        <p class="sheet-hint">카드를 누르면 이 방식으로 열려요. 새 탭으로만 열리게 지정된 항목은 예외예요.</p>
+        <p class="sheet-hint">바로 열기는 이 창에서 앱으로 이동하고, 뒤로 가기로 런처에 돌아와요. 새 탭으로만 열리게 지정된 항목은 예외예요.</p>
         <button type="button" class="text-btn danger" id="reset-stats">사용 기록 지우기</button>
         <button class="sheet-close" value="close">닫기</button>
       </form>
@@ -106,20 +106,6 @@
         <button class="sheet-close" value="close">닫기</button>
       </form>
     </dialog>
-
-    <div class="player" id="player" hidden>
-      <div class="player-bar" id="player-bar">
-        <div class="player-tools">
-          <button type="button" class="player-btn" id="player-close" aria-label="런처로 돌아가기">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-          </button>
-          <button type="button" class="player-btn" id="player-newtab" aria-label="새 탭에서 열기">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5"/></svg>
-          </button>
-        </div>
-        <button type="button" class="player-grip" id="player-grip" aria-label="런처 버튼 보이기"></button>
-      </div>
-    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

@@ -36,13 +36,12 @@
     games: [],
     stats: store.get(KEYS.stats, {}),      // { id: { plays, last } }
     favs: new Set(store.get(KEYS.favs, [])),
-    launch: store.get(KEYS.launch, "fullscreen"),
+    launch: store.get(KEYS.launch, "direct") === "tab" ? "tab" : "direct",
     sort: store.get(KEYS.sort, "recent"),
     catOverrides: store.get(KEYS.cats, {}), // { id: "game" | "tool" | "etc" } set on this device
     tab: store.get(KEYS.tab, "all"),        // "all" | category key
     filter: "all",                          // "all" | "fav" | "tag:<name>"
     query: "",
-    current: null,
     loadError: false,
   };
 
@@ -60,8 +59,7 @@
       description: String(raw.description || raw["설명"] || ""),
       tags: Array.isArray(raw.tags || raw["태그"]) ? (raw.tags || raw["태그"]).map(String) : [],
       category: parseCategory(raw.category || raw["분류"]),
-      orientation: raw.orientation || "",
-      // "tab" for sites that refuse to be framed (X-Frame-Options / frame-ancestors)
+      // "tab": always open this one in a new tab, whatever the setting
       launch: raw.launch === "tab" ? "tab" : "",
       order: i,
     };
@@ -124,114 +122,18 @@
     store.set(KEYS.stats, state.stats);
   }
 
+  // Open the app itself: same tab by default (back returns to the launcher),
+  // or a new tab. Non-web links (shortcuts://, intent://, myapp://) go to the OS.
   function launch(game, mode = game.launch || state.launch) {
     if (!game.url) { toast("이 항목에는 주소가 없어요"); return; }
     recordPlay(game);
-    // App links (shortcuts://, intent://, myapp://) go to the OS, not a tab or frame.
-    if (!/^https?:/i.test(game.url)) {
-      window.location.href = game.url;
-      setTimeout(render, 300);
-      return;
-    }
-    if (mode === "tab") {
+    if (mode === "tab" && /^https?:/i.test(game.url)) {
       window.open(game.url, "_blank", "noopener");
       render();
     } else {
-      openPlayer(game);
+      window.location.href = game.url;
     }
   }
-
-  // ---------- player (in-launcher fullscreen) ----------
-  const player = $("#player");
-  const bar = $("#player-bar");
-  let frame = null;
-  let playerToken = null;
-  let dimTimer;
-
-  function wakeBar() {
-    bar.classList.remove("dim");
-    clearTimeout(dimTimer);
-    dimTimer = setTimeout(() => bar.classList.add("dim"), 2500);
-  }
-
-  // A fresh iframe per launch (src set before insertion) keeps the game's own
-  // navigation out of the launcher's back-button history; removing it on close
-  // drops those entries again.
-  function openPlayer(game) {
-    state.current = game;
-    frame = document.createElement("iframe");
-    frame.title = game.name;
-    frame.allow = "fullscreen; autoplay; gamepad; screen-wake-lock; clipboard-write";
-    frame.allowFullscreen = true;
-    frame.src = game.url;
-    player.prepend(frame);
-    player.hidden = false;
-    document.body.style.overflow = "hidden";
-    playerToken = `${game.id}:${Date.now()}`;
-    history.pushState({ player: playerToken }, "");
-    const fs = player.requestFullscreen || player.webkitRequestFullscreen;
-    if (fs) {
-      Promise.resolve(fs.call(player, { navigationUI: "hide" }))
-        .then(() => {
-          if (game.orientation && screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock(game.orientation).catch(() => {});
-          }
-        })
-        .catch(() => {});
-    }
-    wakeBar();
-    frame.focus();
-  }
-
-  // Step back until the launcher's own entry is current. A game's own entries
-  // don't change our history.state, so popstate alone can't tell us when to stop.
-  function unwindHistory(tries = 6) {
-    if (!tries || !(history.state && history.state.player)) return;
-    history.back();
-    setTimeout(() => { if (player.hidden) unwindHistory(tries - 1); }, 80);
-  }
-
-  function closePlayer({ fromHistory = false } = {}) {
-    if (player.hidden) return;
-    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fsEl) {
-      try { Promise.resolve((document.exitFullscreen || document.webkitExitFullscreen).call(document)).catch(() => {}); } catch { /* ignore */ }
-    }
-    try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch { /* ignore */ }
-    if (frame) { frame.remove(); frame = null; }
-    player.hidden = true;
-    document.body.style.overflow = "";
-    state.current = null;
-    playerToken = null;
-    if (!fromHistory) unwindHistory();
-    render();
-  }
-
-  $("#player-close").addEventListener("click", () => closePlayer());
-  $("#player-newtab").addEventListener("click", () => {
-    const g = state.current;
-    if (!g) return;
-    window.open(g.url, "_blank", "noopener");
-    closePlayer();
-  });
-  $("#player-grip").addEventListener("click", wakeBar);
-  bar.addEventListener("pointerenter", wakeBar);
-  // Back button: leave the player when we land on any entry that isn't this
-  // launch's own. Games may push their own entries (e.g. a back-button trap);
-  // those stay behind after the iframe is gone, so keep stepping back past
-  // stale player entries until we reach the launcher's own.
-  window.addEventListener("popstate", (e) => {
-    const token = e.state && e.state.player;
-    if (!player.hidden) {
-      if (token !== playerToken) closePlayer({ fromHistory: true });
-      if (token && token !== playerToken) history.back();
-    } else if (token) {
-      history.back();
-    }
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !player.hidden && !document.fullscreenElement) closePlayer();
-  });
 
   // ---------- favorites ----------
   function toggleFav(game, btn) {
@@ -400,7 +302,7 @@
       const node = tpl.content.firstElementChild.cloneNode(true);
       node.dataset.id = g.id;
       const main = node.querySelector(".card-main");
-      main.setAttribute("aria-label", `${g.name} 열기 (${(g.launch || state.launch) === "tab" ? "새 탭" : "전체화면"})`);
+      main.setAttribute("aria-label", (g.launch || state.launch) === "tab" ? `${g.name} 새 탭에서 열기` : `${g.name} 열기`);
       main.addEventListener("click", () => launch(g));
       setIcon(node.querySelector(".card-icon"), g);
       node.querySelector(".card-name").textContent = g.name;
@@ -457,7 +359,7 @@
   sheet.querySelectorAll('input[name="launch"]').forEach((r) => r.addEventListener("change", () => {
     state.launch = r.value;
     store.set(KEYS.launch, state.launch);
-    toast(r.value === "tab" ? "이제 새 탭으로 열어요" : "이제 전체화면으로 열어요");
+    toast(r.value === "tab" ? "이제 새 탭으로 열어요" : "이제 이 창에서 바로 열어요");
     renderGrid();
   }));
   $("#reset-stats").addEventListener("click", () => {
@@ -525,7 +427,9 @@
   syncOnline();
 
   // relative times drift; refresh once a minute while visible
-  setInterval(() => { if (!document.hidden && player.hidden) render(); }, 60000);
+  setInterval(() => { if (!document.hidden) render(); }, 60000);
+  // Coming back with the back button can restore this page from cache; refresh stats.
+  window.addEventListener("pageshow", (e) => { if (e.persisted) render(); });
 
   // ---------- boot ----------
   async function load() {
