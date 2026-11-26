@@ -37,5 +37,15 @@
     "icon": "https://atho3398.github.io/football/icons/icon-192.png",
     "description": "한 선수의 축구 커리어를 키우는 게임",
     "tags": ["육성", "축구"]
+  },
+  {
+    "id": "lightbox-photo-editor",
+    "name": "라이트박스 사진 편집기",
+    "category": "도구",
+    "url": "https://claude.ai/artifact/JTKWFWYZgYEbcyQwXktN2t",
+    "icon": "🖼️",
+    "description": "사진 자르기, 크기 조절, 테두리·둥근 모서리, 투명도, 그림자를 넣어 PNG·JPG·WebP로 저장",
+    "tags": ["사진", "편집"],
+    "launch": "tab"
   }
 ]
