@@ -214,7 +214,7 @@
     window.open(g.url, "_blank", "noopener");
     closePlayer();
   });
-  player.addEventListener("pointerdown", wakeBar);
+  $("#player-grip").addEventListener("click", wakeBar);
   bar.addEventListener("pointerenter", wakeBar);
   // Back button: leave the player when we land on any entry that isn't this
   // launch's own. Games may push their own entries (e.g. a back-button trap);
